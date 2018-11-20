@@ -1,0 +1,254 @@
+﻿<!DOCTYPE html>
+<html>
+<head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+
+    <meta name="viewport" content="initial-scale=1, maximum-scale=1,user-scalable=no">
+    <title>Map with Editor</title>
+
+    <link rel="stylesheet" href="https://js.arcgis.com/3.26/dijit/themes/claro/claro.css">
+    <link rel="stylesheet" href="https://js.arcgis.com/3.26/esri/css/esri.css">
+
+    <style>
+        html, body {
+            height: 100%;
+            width: 100%;
+            margin: 0;
+        }
+
+        #rightPane {
+            width: 20%;
+        }
+
+        #legendPane {
+            border: solid #97DCF2 1px;
+        }
+    </style>
+
+    <script src="https://js.arcgis.com/3.26/"></script>
+    <script>
+    var map;
+        require([
+        "esri/arcgis/utils",
+            "esri/map",
+            "esri/toolbars/draw",
+            "esri/toolbars/edit",
+            "esri/graphic",
+            "esri/config",
+        "esri/layers/OpenStreetMapLayer",
+            "esri/layers/FeatureLayer",
+            "esri/symbols/SimpleMarkerSymbol",
+            "esri/symbols/SimpleLineSymbol",
+            "esri/symbols/SimpleFillSymbol",
+        "esri/dijit/BasemapGallery",
+        "esri/dijit/Search",
+        "esri/dijit/LocateButton",
+        "esri/dijit/LayerList",
+        "esri/dijit/Legend",
+        "esri/dijit/Measurement",
+            "esri/dijit/HomeButton",
+            "esri/dijit/editing/TemplatePicker",
+            "dojo/_base/array",
+            "dojo/_base/event",
+            "dojo/_base/lang",
+            "dojo/parser",
+            "dijit/registry",
+        "dijit/layout/BorderContainer",
+        "dijit/layout/ContentPane",
+            "dijit/layout/AccordionContainer",
+            "dijit/form/Button",
+        "dojo/domReady!"
+    ], function(
+        arcgisUtils,
+        Map,
+        Draw, Edit, Graphic, esriConfig,
+        OpenStreetMapLayer,
+        FeatureLayer,
+        SimpleMarkerSymbol, SimpleLineSymbol, SimpleFillSymbol,
+        BasemapGallery,
+        Search,
+        LocateButton,
+        LayerList,
+        Legend,
+        Measurement,
+        HomeButton,
+        TemplatePicker,
+        arrayUtils,
+        event, lang,
+        parser, registry
+    ) {
+        parser.parse();
+        esriConfig.defaults.io.proxyUrl = "/proxy/";
+        esriConfig.defaults.geometryService = new esri.tasks.GeometryService("https://utility.arcgisonline.com/ArcGIS/rest/services/Geometry/GeometryServer");
+//map
+      map = new Map("map", {
+                basemap: "satellite",
+                center: [80.2707, 13.0827],
+                zoom: 12
+        });
+//adding OSM
+        openStreetMapLayer = new OpenStreetMapLayer(
+            {visible: true} );
+        map.addLayer(openStreetMapLayer);
+
+//adding feature service
+        var featureLayer = new FeatureLayer("https://services9.arcgis.com/lxrnHBZFaetIBEEN/arcgis/rest/services/victim_locations/FeatureServer/0", {
+        mode: FeatureLayer.MODE_ONDEMAND,
+        outFields: ["*"],
+        
+      });
+
+//adding the legend for the same
+      map.on("layers-add-result", function (evt) {
+        var layerInfo = arrayUtils.map(evt.layers, function (layer, index) {
+          return {layer:layer.layer, title: 'Victim Locations' };
+        });
+        if (layerInfo.length > 0) {
+          var legendDijit = new Legend({
+            map: map,
+
+            layerInfos: layerInfo
+          }, "legendDiv");
+          legendDijit.startup();
+        }
+      });
+
+        map.addLayers([featureLayer]);
+
+
+//basemap gallery daww
+         var basemapGallery = new BasemapGallery({
+                    showArcGISBasemaps: true,
+                    map: map
+                }, "basemapGallery");
+                basemapGallery.startup();
+
+                basemapGallery.on("error", function (msg) {
+                    console.log("basemap gallery error:  ", msg);
+                });
+//search daww
+                var search = new Search({
+                    map: map
+                }, "search");
+                search.startup();
+//my location daww
+                geoLocate = new LocateButton({
+                    map: map
+                }, "LocateButton");
+                geoLocate.startup();
+//visibility toggle
+                var layerList = new LayerList({
+                    map:map,
+                    //layers: arcgisUtils.getLayerList(map),
+                    layers: [
+                        {
+                            layer: openStreetMapLayer,
+                            //featureCollection: featureCollection,
+                            showSubLayers: true,
+                            showLegend: false,
+                            showOpacitySlider: false,
+                            visibility: true,
+                            id: "OpenStreetMap"
+                        },
+                        //{
+                        //                                    //additional layer
+                        //                                }
+                    ],
+                }, "layerList");
+                layerList.startup();
+
+//measurement tools daw
+                var measurement = new Measurement({
+                    map: map,
+
+                }, "measurementDiv");
+
+                measurement.startup();
+//home button daww
+                var home = new HomeButton({
+                    map: map
+                }, "HomeButton");
+                home.startup();
+
+                function initEditing(event) {
+                    console.log("initEditing", event);
+                    var currentLayer = featureLayer;
+                    var editToolbar = new Edit(map);
+
+                    var templateLayers = [featureLayer];
+                    var templatePicker = new TemplatePicker({
+                        featureLayers: templateLayers,
+                        rows: "auto",
+                        columns: 2,
+                        grouping: true,
+
+                    }, "templatePickerDiv");
+
+                    templatePicker.startup();
+
+                }
+
+    });
+    </script>
+</head>
+
+<body class="claro">
+    <div id="content"
+         data-dojo-type="dijit/layout/BorderContainer"
+         data-dojo-props="design:'headline', gutters:true"
+         style="width: 100%; height: 100%; margin: 0;">
+
+        <div id="rightPane"
+             data-dojo-type="dijit/layout/ContentPane"
+             data-dojo-props="region:'right'">
+
+            <div data-dojo-type="dijit/layout/AccordionContainer">
+                <div data-dojo-type="dijit/layout/ContentPane" id="editorPane"
+                     data-dojo-props="title:'Add Victim Location', selected:true">
+                    <div id="templatePickerDiv"></div>
+                </div>
+
+                <div data-dojo-type="dijit/layout/ContentPane" id="legendPane"
+                     data-dojo-props="title:'Legend', selected:true">
+                    <div id="legendDiv"></div>
+                </div>
+
+                <div data-dojo-type="dijit/layout/ContentPane" id="bgPane"
+                     data-dojo-props="title:'Change Basemap'">
+                    For better convenience, Streets map has been loaded by default. For using other basemaps, first uncheck 'OpenStreetMap'.
+                    <br />
+                    <br />
+                    <div id="layerList"></div>
+                    <br />
+                    <div id="basemapGallery"></div>
+
+                </div>
+                <div data-dojo-type="dijit/layout/ContentPane" id="measurePane"
+                     data-dojo-props="title:'Measurement tools'">
+                    <div id="measurementDiv"></div>
+                    <div style="position:absolute; top:250px;">
+
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div id="map"
+             data-dojo-type="dijit/layout/ContentPane"
+             data-dojo-props="region:'center'"
+             style="overflow:hidden;">
+            <div style="position:absolute; right:40px; top:30px; z-Index:999;">
+                <div id="search"></div>
+            </div>
+            <div style="position:absolute; left:25px; top:100px; z-Index:999;">
+                <div id="LocateButton"></div>
+            </div>
+            <div style="position:absolute; left:25px; top:140px; z-Index:999;">
+                <div id="HomeButton"></div>
+            </div>
+
+        </div>
+    </div>
+
+</body>
+
+</html>
